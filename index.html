@@ -175,7 +175,8 @@
         let endOfTunnelLight; // Light at the end of the tunnel
         let debrisMeshes = []; // To store and animate debris
         let rockModel; // To store the loaded rock model
-        let rockMeshes = []; // Store all rock instances for animation
+        let rockMeshes = []; // This will now store the InstancedMesh objects
+        let externalModel; // To store the loaded external model
 
         // Function to set the viewport height dynamically for mobile
         function setViewportHeight() {
@@ -183,54 +184,101 @@
             document.documentElement.style.setProperty('--vh', `${vh}px`);
         }
 
-        // Create realistic tunnel using InstancedMesh for performance
-        function createRealisticTunnel() {
-            console.log('Creating multi-geo instanced realistic tunnel...');
+        // Function to create a procedural rock texture for realism
+        function createRockTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
 
-            const rockGeometries = [
-                new THREE.DodecahedronGeometry(1, 0),
-                new THREE.IcosahedronGeometry(1.2, 0),
-                new THREE.BoxGeometry(1.5, 1.5, 1.5)
+            // Base rock color
+            context.fillStyle = '#4a4a4a';
+            context.fillRect(0, 0, 256, 256);
+
+            // Add noise for texture and depth
+            for (let i = 0; i < 15000; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const color = Math.random() * 40 + 20; // Dark gray noise
+                context.fillStyle = `rgb(${color},${color},${color})`;
+                context.fillRect(x, y, 2, 2);
+            }
+
+            // Add lighter and darker patches for more variation
+            for (let i = 0; i < 80; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const size = Math.random() * 40 + 15;
+                const gradient = context.createRadialGradient(x, y, 0, x, y, size);
+                if (Math.random() > 0.5) {
+                    gradient.addColorStop(0, 'rgba(120, 120, 120, 0.25)');
+                    gradient.addColorStop(1, 'rgba(120, 120, 120, 0)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                }
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 256, 256);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        // Create realistic tunnel using multiple InstancedMesh for performance and variety
+        function createRealisticTunnel() {
+            console.log('Creating high-performance, realistic tunnel with textures...');
+
+            const geometries = [
+                new THREE.DodecahedronGeometry(1.2, 0),
+                new THREE.IcosahedronGeometry(1.5, 0),
+                new THREE.BoxGeometry(1.8, 1.8, 1.8)
             ];
 
-            // Deform geometries to make them look more natural
-            rockGeometries.forEach(geometry => {
+            geometries.forEach(geometry => {
                 const vertices = geometry.attributes.position.array;
                 for (let i = 0; i < vertices.length; i += 3) {
-                    vertices[i] += (Math.random() - 0.5) * 0.5;
-                    vertices[i + 1] += (Math.random() - 0.5) * 0.5;
-                    vertices[i + 2] += (Math.random() - 0.5) * 0.5;
+                    vertices[i] += (Math.random() - 0.5) * 0.8;
+                    vertices[i + 1] += (Math.random() - 0.5) * 0.8;
+                    vertices[i + 2] += (Math.random() - 0.5) * 0.8;
                 }
                 geometry.computeVertexNormals();
             });
 
-            const rockMaterial = new THREE.MeshStandardMaterial({
-                color: 0x505050,
-                roughness: 0.9,
+            const rockTexture = createRockTexture();
+
+            const material = new THREE.MeshStandardMaterial({
+                map: rockTexture, // Apply the procedural texture
+                bumpMap: rockTexture, // Use the same texture for bump mapping for depth
+                bumpScale: 0.05, // Adjust the bumpiness
+                roughness: 0.95, // Very rough surface
                 metalness: 0.1,
             });
 
-            const numInstancesPerMesh = 1000;
+            const instancesPerGeometry = 800; // Slightly fewer instances for performance
             const dummy = new THREE.Object3D();
 
-            rockGeometries.forEach(geometry => {
-                const instancedRockMesh = new THREE.InstancedMesh(geometry, rockMaterial, numInstancesPerMesh);
-                instancedRockMesh.castShadow = true;
-                instancedRockMesh.receiveShadow = true;
+            geometries.forEach(geometry => {
+                const instancedMesh = new THREE.InstancedMesh(geometry, material, instancesPerGeometry);
+                instancedMesh.castShadow = true;
+                instancedMesh.receiveShadow = true;
 
-                for (let i = 0; i < numInstancesPerMesh; i++) {
+                for (let i = 0; i < instancesPerGeometry; i++) {
                     const t = Math.random();
                     const pos = curve.getPointAt(t);
                     const angle = Math.random() * Math.PI * 2;
-                    const radius = 4 + Math.random() * 6;
+                    const radius = 8 + Math.random() * 10; // Adjusted radius for the new curve
 
                     dummy.position.set(
-                        pos.x + Math.cos(angle) * radius,
-                        pos.y + Math.sin(angle) * radius,
-                        pos.z + (Math.random() - 0.5) * 6
+                        pos.x + Math.cos(angle) * radius + (Math.random() - 0.5) * 3,
+                        pos.y + Math.sin(angle) * radius + (Math.random() - 0.5) * 3,
+                        pos.z + (Math.random() - 0.5) * 12 // Scatter along the z-axis
                     );
 
-                    const scale = 0.5 + Math.random() * 1.5;
+                    const scale = 0.8 + Math.random() * 2.5; // Increase max scale for more variety
                     dummy.scale.set(scale, scale, scale);
 
                     dummy.rotation.set(
@@ -240,18 +288,43 @@
                     );
 
                     dummy.updateMatrix();
-                    instancedRockMesh.setMatrixAt(i, dummy.matrix);
+                    instancedMesh.setMatrixAt(i, dummy.matrix);
                 }
-                scene.add(instancedRockMesh);
+                scene.add(instancedMesh);
+                rockMeshes.push(instancedMesh);
             });
 
-            console.log('Multi-geo instanced tunnel created.');
+            console.log('Textured and realistic instanced tunnel created successfully.');
         }
 
         // Load external 3D model from free CDN
         function loadExternalModel() {
-            // Skip external model loading and go directly to the high-performance instanced tunnel
-            createRealisticTunnel();
+            console.log('Loading external 3D model...');
+            const loader = new THREE.GLTFLoader();
+            const modelUrl = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/models/gltf/PrimaryIonDrive.glb';
+
+            loader.load(modelUrl, (gltf) => {
+                externalModel = gltf.scene;
+                externalModel.scale.set(2.5, 2.5, 2.5); // Slightly increase model size
+                // Position the model in the center of the main loop of the new curve
+                externalModel.position.set(0, 0, -100);
+                externalModel.rotation.y = -Math.PI / 2; // Rotate to face the camera at the start
+
+                externalModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        // Optional: Add emissive material for glowing effect
+                        child.material.emissive = new THREE.Color(0x00ff00);
+                        child.material.emissiveIntensity = 0.8;
+                    }
+                });
+
+                scene.add(externalModel);
+                console.log('External model loaded and positioned at the center of the curve.');
+            }, undefined, (error) => {
+                console.error('An error occurred while loading the model:', error);
+            });
         }
 
         // Function to create a glowing line texture
@@ -442,43 +515,26 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.outputEncoding = THREE.sRGBEncoding;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.5;
+            renderer.toneMappingExposure = 1.2; // Adjusted exposure
             document.getElementById('three-container').appendChild(renderer.domElement);
 
             // Create enhanced 3D curve
-            const points = [];
-            const tubeLength = 100;
-            const numPoints = 80;
+            createCurve();
 
-            for (let i = 0; i <= numPoints; i++) {
-                const t = i / numPoints;
-                const x = Math.sin(t * Math.PI * 3) * 8; // More dramatic curves
-                const y = Math.cos(t * Math.PI * 2.5) * 6;
-                const z = t * -tubeLength;
-                points.push(new THREE.Vector3(x, y, z));
-            }
-
-            curve = new THREE.CatmullRomCurve3(points);
-
-            // Enhanced lighting setup for better 3D depth
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+            // Optimized lighting setup for performance and realism
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.8); // A bit brighter ambient
             scene.add(ambientLight);
 
-            // Simplified lighting for performance
-            const light1 = new THREE.DirectionalLight(0xffffff, 1.0);
-            light1.position.set(10, 10, 5);
-            light1.castShadow = true;
-            light1.shadow.mapSize.width = 1024;
-            light1.shadow.mapSize.height = 1024;
-            light1.shadow.camera.near = 0.5;
-            light1.shadow.camera.far = 50;
-            scene.add(light1);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(10, 15, 5); // Repositioned for better highlights
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024; // Standard shadow map size
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
 
             // Moving point light for dynamic 3D shadows
-            pointLight = new THREE.PointLight(0xffffff, 1.5, 30);
+            pointLight = new THREE.PointLight(0xffffff, 1.2, 40); // Adjusted intensity and distance
             pointLight.castShadow = true;
-            pointLight.shadow.mapSize.width = 1024;
-            pointLight.shadow.mapSize.height = 1024;
             scene.add(pointLight);
 
             // End light
@@ -513,6 +569,33 @@
 
             // Debugging logs to identify issues
             console.log('Initializing Three.js with realistic 3D tunnel...');
+        }
+
+        // Create the main 3D curve for the camera path, now with more 3D traversal
+        function createCurve() {
+            console.log('Creating a more dynamic 3D curve...');
+            const points = [];
+            const numPoints = 150;
+            const radius = 25; // Radius of the main loop
+            const verticalFluctuation = 15; // How much the path moves up and down
+
+            for (let i = 0; i < numPoints; i++) {
+                const angle = (i / numPoints) * Math.PI * 4; // Two full circles
+                const x = Math.cos(angle) * radius;
+                // Create a path that weaves up and down for a more 3D feel
+                const y = Math.sin(angle * 2) * verticalFluctuation;
+                const z = Math.sin(angle) * radius;
+                points.push(new THREE.Vector3(x, y, z - 100)); // Move the whole path back
+            }
+
+            // Add a final straight section to avoid a sharp loop at the end
+            const lastPoint = points[points.length - 1].clone();
+            for (let i = 1; i <= 10; i++) {
+                points.push(new THREE.Vector3(lastPoint.x, lastPoint.y, lastPoint.z + i * 20));
+            }
+
+            curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+            console.log('Dynamic 3D curve created.');
         }
 
         // Handle window resize
@@ -621,7 +704,8 @@
                 mesh.position.y += Math.sin(Date.now() * 0.0005 + mesh.id) * 0.005;
             });
 
-            // Rock animation removed for performance and realism (solid rocks)
+            // The rock animation was removed as it's not needed for InstancedMesh and was causing issues.
+            // The rocks are now static for realism and performance.
 
             // Update particles for twinkling and movement
             if (particles) {
