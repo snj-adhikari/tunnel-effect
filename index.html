@@ -516,9 +516,9 @@
 
         // Restore tube geometry for the main tunnel
         let tubeGeometry;
+        const tubeRadius = 3.5; // Reduced radius for a tighter, more compact tunnel
         const tubularSegments = 200;
         function createTunnel() {
-            const tubeRadius = 4.5; // Reduced radius for a tighter tunnel
             tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
             const tubeMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x0A0A0A, // Even darker tunnel wall
@@ -542,7 +542,7 @@
         function extendTunnelToEnd() {
             const endPoint = curve.getPointAt(1); // Get the last point of the curve
             const tangent = curve.getTangentAt(1).normalize();
-            const tunnelEndGeom = new THREE.CylinderGeometry(4.5, 4.5, 2, 32);
+            const tunnelEndGeom = new THREE.CylinderGeometry(tubeRadius, tubeRadius, 2, 32);
             const tunnelEndMat = new THREE.MeshPhysicalMaterial({
                 color: 0x0A0A0A, // Match the tunnel wall color
                 roughness: 0.95,
@@ -619,7 +619,7 @@
             scene.add(endOfTunnelLight);
 
             // Add web tunnel threads AFTER curve is initialized
-            addWebTunnel(curve, 4.5, 160, 36); // More threads, more segments
+            addWebTunnel(curve, tubeRadius, 240, 36); // Increased thread count for more compact rings
             createTunnel(); // Add the shadowy tunnel wall
             addRandomDebris(curve, 50); // Increased number of debris objects for a forest feel
 
@@ -814,27 +814,8 @@
             });
         }
 
-        // Adjust the tube radius and curve points for a more compact tunnel
-        const tubeRadius = 4.5; // Reduced radius for a tighter tunnel
-        function createTunnel() {
-            tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
-            const tubeMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x0A0A0A, // Even darker tunnel wall
-                roughness: 0.95,
-                metalness: 0.05,
-                transmission: 0.1,
-                thickness: 0.3,
-                ior: 1.1,
-                clearcoat: 0.2,
-                clearcoatRoughness: 0.8,
-                opacity: 0.65, // Slightly more opaque for deeper shadows
-                transparent: true,
-                side: THREE.BackSide
-            });
-            tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
-            tubeMesh.receiveShadow = true; // The tunnel wall receives shadows from the ropes
-            scene.add(tubeMesh);
-        }
+        // This function is no longer needed as its logic is merged into updateSceneAndContent
+        // function positionLastSectionInsideTunnel() { ... }
 
         // Ensure the end of the tunnel has a proper circular cap
         function addTunnelEndCap() {
