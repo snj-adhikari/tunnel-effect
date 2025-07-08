@@ -277,7 +277,7 @@
         function createBranchMesh() {
             const branchGroup = new THREE.Group();
             const branchMat = new THREE.MeshPhysicalMaterial({
-                color: 0x5C4033, // Dark wood color
+                color: 0x3C2A1E, // Darker, more realistic brown
                 roughness: 0.9,
                 metalness: 0.1
             });
@@ -492,7 +492,7 @@
                 const threadCurve = new THREE.CatmullRomCurve3(points);
                 const threadGeom = new THREE.TubeGeometry(threadCurve, threadSegments * 2, 0.16 + Math.random() * 0.08, 10, false); // Thicker threads
                 const threadMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x5C4033, // Changed to dark wood color to look like tree branches
+                    color: 0x3C2A1E, // Darker, more realistic brown
                     roughness: 0.9, // Increased roughness for a more matte and rough finish
                     metalness: 0.05, // Reduced metalness
                     transmission: 0.0, // No silkiness
