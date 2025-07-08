@@ -235,6 +235,37 @@
             return texture;
         }
 
+        // Function to create a procedural rope-like normal map for texture
+        function createRopeNormalMap() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(256, 256);
+            const data = imageData.data;
+
+            for (let y = 0; y < 256; y++) {
+                for (let x = 0; x < 256; x++) {
+                    // Generate a pattern that looks like twisted rope fibers
+                    const angle = (x + y * 4) * Math.PI / 32;
+                    const nx = Math.cos(angle) * 127 + 128; // Normal X component
+                    const ny = Math.sin(angle) * 127 + 128; // Normal Y component
+                    const nz = 255; // Normal Z component (pointing out)
+                    const index = (y * 256 + x) * 4;
+                    data[index] = nx;
+                    data[index + 1] = ny;
+                    data[index + 2] = nz;
+                    data[index + 3] = 255; // Alpha
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 8); // Repeat the texture along the rope
+            return texture;
+        }
+
         // Remove the smooth tube mesh (do not add tubeMesh to scene)
         // Instead, build the tunnel from rib arcs forming the wall
         function addSkeletonTunnel(curve, ribCount, tunnelRadius) {
@@ -301,6 +332,8 @@
         // Remove bone/rib/spine/cocoon functions
         // Add a function to generate a 3D web tunnel made of threads
         function addWebTunnel(curve, tunnelRadius, threadCount, threadSegments) {
+            const ropeNormalMap = createRopeNormalMap(); // Create the texture once
+
             for (let i = 0; i < threadCount; i++) {
                 const startT = Math.random() * 0.95;
                 let endT = startT + 0.05 + Math.random() * 0.2;
@@ -325,9 +358,9 @@
                 const threadCurve = new THREE.CatmullRomCurve3(points);
                 const threadGeom = new THREE.TubeGeometry(threadCurve, threadSegments * 2, 0.16 + Math.random() * 0.08, 10, false); // Thicker threads
                 const threadMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x8a7c6b, // Rope-like brownish color
-                    roughness: 0.85, // High roughness for matte finish
-                    metalness: 0.08,
+                    color: 0x4B4B4B, // Darker grey/black color
+                    roughness: 0.9, // Increased roughness for a more matte and rough finish
+                    metalness: 0.05, // Reduced metalness
                     transmission: 0.0, // No silkiness
                     thickness: 0.18,
                     ior: 1.2,
@@ -336,9 +369,13 @@
                     opacity: 0.98,
                     transparent: true,
                     emissive: 0x000000, // No glow
-                    emissiveIntensity: 0.0
+                    emissiveIntensity: 0.0,
+                    normalMap: ropeNormalMap, // Apply the rope texture
+                    normalScale: new THREE.Vector2(0.5, 0.5) // Increased texture depth for more roughness
                 });
                 const thread = new THREE.Mesh(threadGeom, threadMat);
+                thread.castShadow = true; // Ropes cast shadows
+                thread.receiveShadow = true; // Ropes can have shadows cast on them
                 scene.add(thread);
             }
         }
@@ -350,7 +387,7 @@
         function createTunnel() {
             tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
             const tubeMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x181a1e, // Very dark blue/gray for shadow
+                color: 0x0A0A0A, // Even darker tunnel wall
                 roughness: 0.95,
                 metalness: 0.05,
                 transmission: 0.1,
@@ -358,11 +395,12 @@
                 ior: 1.1,
                 clearcoat: 0.2,
                 clearcoatRoughness: 0.8,
-                opacity: 0.55,
+                opacity: 0.65, // Slightly more opaque for deeper shadows
                 transparent: true,
                 side: THREE.BackSide
             });
             tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            tubeMesh.receiveShadow = true; // The tunnel wall receives shadows from the ropes
             scene.add(tubeMesh);
         }
 
@@ -381,6 +419,8 @@
             renderer.setClearColor(0xffffff, 1); // Set clear color to transparent
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true; // Enable shadows
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
             document.getElementById('three-container').appendChild(renderer.domElement);
 
             // Create the tube path using a CatmullRomCurve3
@@ -398,11 +438,15 @@
             curve = new THREE.CatmullRomCurve3(points);
 
             // Dramatic, eerie lighting
-            const ambientLight = new THREE.AmbientLight(0xf7e7c6, 0.22);
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Cooler, more subtle ambient light
             scene.add(ambientLight);
-            pointLight = new THREE.PointLight(0xffffff, 2.2, 90);
+            pointLight = new THREE.PointLight(0xffffff, 2.0, 100); // Slightly adjusted intensity and distance
+            pointLight.castShadow = true; // The main light casts shadows
+            pointLight.shadow.mapSize.width = 1024; // Shadow quality
+            pointLight.shadow.mapSize.height = 1024;
+            pointLight.shadow.bias = -0.001; // Helps prevent shadow artifacts
             scene.add(pointLight);
-            const dirLight = new THREE.DirectionalLight(0xcad6ff, 1.1);
+            const dirLight = new THREE.DirectionalLight(0x888899, 0.8); // Cooler directional light
             dirLight.position.set(10, 20, 10);
             scene.add(dirLight);
 
