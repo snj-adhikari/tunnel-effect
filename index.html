@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tube Website Experience</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for the page */
+
+        .section-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            max-width: 80%; /* Limit the width to 80% of the screen */
+            width: 100%; /* Ensure it takes full width up to the max-width */
+            height: 100vh; /* Full viewport height */
+            background: transparent;
+            margin: 0 auto; /* Center horizontally */
+            padding: 1rem; /* Add some padding for better responsiveness */
+            box-sizing: border-box; /* Include padding in width calculations */
+            opacity: 0; /* Initially hidden */
+            transform: scale(0.5); /* Start scaled down for the traverse effect */
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Animate opacity and scale */
+        }
+
+        /* Ensure the scrollable content extends beyond the viewport to enable scrolling */
+        #scroll-content-wrapper {
+            /* This height will be dynamically set by JS to enable scrolling */
+            min-height: 100vh; /* Minimum height, will be adjusted */
+        }
+
+        #three-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1; /* Below content overlay */
+        }
+
+        #scroll-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow-y: hidden; /* Disable the native scrollbar */
+            z-index: 2; /* Above Three.js canvas */
+        }
+    </style>
+</head>
+<body>
+    <!-- Container for the Three.js canvas -->
+    <div id="three-container"></div>
+
+    <!-- Scrollable container for the HTML content overlay -->
+    <div id="scroll-container">
+        <div id="scroll-content-wrapper">
+            <!-- Sample Content Sections -->
+            <section id="section1" class="section-content" data-scroll-start="0" data-scroll-end="0.2">
+                <h1 class="text-5xl md:text-7xl font-bold mb-4">Welcome to the Tube Journey!</h1>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    Explore our immersive experience as you traverse through a mystical tube.
+                    Scroll down to begin your adventure.
+                </p>
+                <button class="mt-8 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full shadow-lg transition duration-300">
+                    Start Exploring
+                </button>
+            </section>
+
+            <section id="section2" class="section-content" data-scroll-start="0.2" data-scroll-end="0.4">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">Our Mission</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    We aim to redefine web navigation by blending stunning visuals with seamless interaction.
+                    Each twist and turn reveals new insights.
+                </p>
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-2">Innovation</h3>
+                        <p>Pushing the boundaries of web design.</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-2">Experience</h3>
+                        <p>Crafting unforgettable user journeys.</p>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 class="text-2xl font-semibold mb-2">Simplicity</h3>
+                        <p>Complex ideas, elegantly presented.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section3" class="section-content" data-scroll-start="0.4" data-scroll-end="0.6">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">What You'll Discover</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    From captivating articles to interactive elements, every segment of the tube holds a surprise.
+                    Prepare to be amazed!
+                </p>
+                <ul class="mt-8 text-left space-y-4 text-lg md:text-xl">
+                    <li>✨ Immersive Visuals</li>
+                    <li>🚀 Seamless Navigation</li>
+                    <li>💡 Engaging Content</li>
+                    <li>🔒 Secure Environment</li>
+                </ul>
+            </section>
+
+            <section id="section4" class="section-content" data-scroll-start="0.6" data-scroll-end="0.8">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">Get Started</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    Ready to embark on your own journey? Join our community and start creating!
+                </p>
+                <form class="mt-8 w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-md">
+                    <div class="mb-4">
+                        <label for="name" class="block text-white text-sm font-bold mb-2">Name:</label>
+                        <input type="text" id="name" name="name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Your Name">
+                    </div>
+                    <div class="mb-6">
+                        <label for="email" class="block text-white text-sm font-bold mb-2">Email:</label>
+                        <input type="email" id="email" name="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" placeholder="your@example.com">
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline transition duration-300">
+                        Sign Up
+                    </button>
+                </form>
+            </section>
+
+            <section id="section5" class="section-content" data-scroll-start="0.8" data-scroll-end="1.0">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">Contact Us</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    Have questions or feedback? We'd love to hear from you.
+                </p>
+                <div class="mt-8 flex flex-col md:flex-row gap-6">
+                    <a href="#" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-full shadow-lg transition duration-300">
+                        Email Us
+                    </a>
+                    <a href="#" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-full shadow-lg transition duration-300">
+                        Follow on X
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js variables
+        let scene, camera, renderer, tubeMesh, curve, pointLight;
+        let scrollContainer, scrollContentWrapper, contentSections;
+        let currentSectionIndex = 0;
+        let isAnimating = false; // To prevent scroll spam
+
+        // Function to create a glowing line texture
+        function createLineTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; // Texture width
+            canvas.height = 128; // Texture height
+            const context = canvas.getContext('2d');
+
+            // Draw a black background
+            context.fillStyle = '#000000';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw white vertical lines
+            context.strokeStyle = '#FFFFFF'; // White lines
+            context.lineWidth = 2; // Line thickness
+            const lineSpacing = 16; // Space between lines
+
+            for (let x = 0; x < canvas.width; x += lineSpacing) {
+                context.beginPath();
+                context.moveTo(x, 0);
+                context.lineTo(x, canvas.height);
+                context.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        // Add particles to the background
+        function addParticles() {
+            const particleCount = 500;
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const positions = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 100;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+
+        // Initialize the Three.js scene
+        function initThree() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x000000, 75, 150); // Use black fog to match the background
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 0); // Start at the beginning of the tube
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true }); // Set alpha to true for a transparent background
+            renderer.setClearColor(0xffffff, 1); // Set clear color to transparent
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('three-container').appendChild(renderer.domElement);
+
+            // Create the tube path using a CatmullRomCurve3
+            const points = [];
+            const tubeLength = 100; // Total length of the tube
+            const numPoints = 50;   // Number of points defining the curve
+
+            for (let i = 0; i <= numPoints; i++) {
+                const x = Math.sin(i * 0.2) * 5; // Wavy path on X
+                const y = Math.cos(i * 0.15) * 5; // Wavy path on Y
+                const z = (i / numPoints) * -tubeLength; // Linear progression along Z-axis (negative for forward movement)
+                points.push(new THREE.Vector3(x, y, z));
+            }
+
+            curve = new THREE.CatmullRomCurve3(points);
+
+            // Create TubeGeometry
+            // parameters: path, tubularSegments, radius, radialSegments, closed
+            const tubeRadius = 2.5;
+            const tubularSegments = 200; // More segments for smoother tube
+            const radialSegments = 20;   // More segments for rounder tube
+            const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, radialSegments, false);
+
+            // Create the custom line texture
+            const lineTexture = createLineTexture();
+            lineTexture.repeat.set(50, 1); // Increase repeat for thinner rings
+
+            // Create a material for the tube that glows
+            const tubeMaterial = new THREE.MeshLambertMaterial({
+                map: lineTexture,
+                emissive: new THREE.Color(0x000000), // Black emissive color for contrast
+                emissiveMap: lineTexture,
+                emissiveIntensity: 1.2, // Slightly reduced intensity for subtle glow
+                transparent: true,
+                opacity: 0.8, // More transparent for thinner appearance
+                side: THREE.BackSide,
+                blending: THREE.NormalBlending,
+            });
+            lineTexture.repeat.set(200, 1); // Increase repeat for even thinner rings
+
+            tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            scene.add(tubeMesh);
+
+            // Add ambient light for overall scene illumination (less intense now with glowing tube)
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+            scene.add(ambientLight);
+
+            // Add a point light that will move with the camera (can be less intense too)
+            pointLight = new THREE.PointLight(0xffffff, 0.5, 50); // color, intensity, distance
+            scene.add(pointLight);
+
+            // Get HTML elements
+            scrollContainer = document.getElementById('scroll-container');
+            scrollContentWrapper = document.getElementById('scroll-content-wrapper');
+            contentSections = document.querySelectorAll('.section-content');
+
+            // Set the scrollable height to enable snapping between sections
+            scrollContentWrapper.style.height = `${contentSections.length * 100}vh`;
+
+            // Initial update of camera and content positions
+            updateSceneAndContent();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('wheel', onWheel, { passive: false }); // Use wheel event for controlled scrolling
+
+            addParticles();
+
+            // Debugging logs to identify issues
+            console.log('Initializing Three.js with section-based scroll...');
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Re-adjust scrollable height on resize
+            scrollContentWrapper.style.height = `${contentSections.length * 100}vh`;
+
+            // Snap to the current section's position after resize
+            scrollContainer.scrollTop = currentSectionIndex * window.innerHeight;
+            updateSceneAndContent();
+        }
+
+        // Handle wheel event for section-by-section scrolling
+        function onWheel(event) {
+            event.preventDefault(); // Prevent default scroll behavior
+            if (isAnimating) return;
+
+            const direction = Math.sign(event.deltaY);
+
+            if (direction > 0) {
+                // Scrolling down
+                if (currentSectionIndex < contentSections.length - 1) {
+                    currentSectionIndex++;
+                    scrollToSection(currentSectionIndex);
+                }
+            } else {
+                // Scrolling up
+                if (currentSectionIndex > 0) {
+                    currentSectionIndex--;
+                    scrollToSection(currentSectionIndex);
+                }
+            }
+        }
+
+        // Animate scrolling to a specific section
+        function scrollToSection(index) {
+            isAnimating = true;
+            const targetScrollTop = index * window.innerHeight;
+            const startScrollTop = scrollContainer.scrollTop;
+            const distance = targetScrollTop - startScrollTop;
+            const duration = 2000; // Animation duration in ms
+            let startTime = null;
+
+            function animateScroll(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const elapsedTime = currentTime - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                // Easing function for smoother animation
+                const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+                scrollContainer.scrollTop = startScrollTop + distance * easedProgress;
+
+                updateSceneAndContent();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateScroll);
+                } else {
+                    isAnimating = false;
+                }
+            }
+
+            requestAnimationFrame(animateScroll);
+        }
+
+        // Infinite tunnel loop
+        function updateSceneAndContent() {
+            // Calculate scroll progress based on the total scrollable height
+            const maxScrollTop = scrollContentWrapper.scrollHeight - scrollContainer.clientHeight;
+            const scrollProgress = maxScrollTop > 0 ? scrollContainer.scrollTop / maxScrollTop : 0;
+            const clampedProgress = Math.max(0, Math.min(1, scrollProgress));
+
+            console.log('Scroll Progress:', scrollProgress);
+            console.log('Clamped Progress:', clampedProgress);
+
+            // Update camera position along the curve
+            const cameraPoint = curve.getPointAt(clampedProgress);
+            const cameraTangent = curve.getTangentAt(clampedProgress).normalize();
+            camera.position.copy(cameraPoint);
+            const lookAtPoint = cameraPoint.clone().add(cameraTangent.multiplyScalar(0.1));
+            camera.lookAt(lookAtPoint);
+            pointLight.position.copy(cameraPoint);
+
+            console.log('Camera Position:', camera.position);
+
+            // Animate section visibility and scale based on scroll progress
+            const sectionScrollProgress = clampedProgress * (contentSections.length - 1);
+
+            contentSections.forEach((section, index) => {
+                const distance = Math.abs(index - sectionScrollProgress);
+                // Opacity is 1 when close, 0 when far
+                const opacity = Math.max(0, 1 - distance);
+                // Scale is 1 when close, 0.5 when far
+                const scale = 0.5 + 0.5 * Math.max(0, 1 - distance);
+
+                section.style.opacity = opacity;
+                section.style.transform = `scale(${scale})`;
+            });
+
+            // Change tunnel line color dynamically based on section
+            const sectionIndex = Math.floor(clampedProgress * contentSections.length);
+
+            // End of tunnel effect for the last section
+            if (sectionIndex >= contentSections.length - 1) {
+                const endProgress = (clampedProgress - (contentSections.length - 1) / contentSections.length) * contentSections.length;
+                scene.fog.far = 200 - endProgress * 150; // Gradually decrease fog distance
+            } else {
+                scene.fog.far = 200; // Default fog distance
+            }
+
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0x000000]; // Last color is black for the end
+            const currentColor = colors[sectionIndex % colors.length];
+            tubeMesh.material.emissive.setHex(currentColor);
+
+            console.log('Current Section Index:', sectionIndex);
+            console.log('Current Tunnel Color:', currentColor);
+
+            // Render the Three.js scene
+            renderer.render(scene, camera);
+        }
+
+        // Start the animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            // The rendering is now handled by updateSceneAndContent on scroll,
+            // but we keep animate for potential future animations not tied to scroll
+            // For now, it primarily keeps the loop running if needed.
+            // renderer.render(scene, camera); // No need to call here if updateSceneAndContent handles it
+        }
+
+        // Initialize Three.js and start the animation when the window loads
+        window.onload = function() {
+            initThree();
+            animate();
+        };
+    </script>
+</body>
+</html>
