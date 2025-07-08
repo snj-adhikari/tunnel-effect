@@ -215,6 +215,157 @@
             scene.add(particles);
         }
 
+        // Function to create a procedural bone-like normal map
+        function createBoneNormalMap() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            for (let y = 0; y < 256; y++) {
+                for (let x = 0; x < 256; x++) {
+                    // Simulate bone texture with irregular noise
+                    const value = Math.floor(180 + 40 * Math.sin(x * 0.13 + y * 0.07) + 30 * Math.random());
+                    ctx.fillStyle = `rgb(${value},${value},255)`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        // Remove the smooth tube mesh (do not add tubeMesh to scene)
+        // Instead, build the tunnel from rib arcs forming the wall
+        function addSkeletonTunnel(curve, ribCount, tunnelRadius) {
+            for (let i = 0; i < ribCount; i++) {
+                const t = i / ribCount;
+                const pos = curve.getPointAt(t);
+                const tangent = curve.getTangentAt(t);
+                const axis = new THREE.Vector3(0, 1, 0);
+                const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, tangent.clone().normalize());
+                // Rib arc: a half-torus, open at the bottom
+                const ribGeom = new THREE.TorusGeometry(tunnelRadius, 0.18 + Math.random() * 0.08, 16, 64, Math.PI * (1.2 + Math.random() * 0.2));
+                const ribMat = new THREE.MeshPhysicalMaterial({
+                    color: 0xf7e7c6,
+                    roughness: 0.7,
+                    metalness: 0.1,
+                    transmission: 0.4,
+                    thickness: 0.5,
+                    ior: 1.3,
+                    clearcoat: 0.3,
+                    clearcoatRoughness: 0.5,
+                    opacity: 0.97,
+                    transparent: true
+                });
+                const rib = new THREE.Mesh(ribGeom, ribMat);
+                rib.position.copy(pos);
+                rib.quaternion.copy(quaternion);
+                rib.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.2; // Open side down, slight random tilt
+                rib.position.x += (Math.random() - 0.5) * tunnelRadius * 0.15;
+                rib.position.y += (Math.random() - 0.5) * tunnelRadius * 0.1;
+                scene.add(rib);
+            }
+        }
+
+        // Optionally, add a central spine
+        function addSpine(curve, vertebraeCount) {
+            for (let i = 0; i < vertebraeCount; i++) {
+                const t = i / vertebraeCount;
+                const pos = curve.getPointAt(t);
+                const tangent = curve.getTangentAt(t);
+                const axis = new THREE.Vector3(0, 1, 0);
+                const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, tangent.clone().normalize());
+                // Vertebra: a squashed sphere or short cylinder
+                const vertebraGeom = new THREE.SphereGeometry(0.35 + Math.random() * 0.1, 16, 12);
+                const vertebraMat = new THREE.MeshPhysicalMaterial({
+                    color: 0xf7e7c6,
+                    roughness: 0.6,
+                    metalness: 0.1,
+                    transmission: 0.3,
+                    thickness: 0.5,
+                    ior: 1.3,
+                    clearcoat: 0.2,
+                    clearcoatRoughness: 0.5,
+                    opacity: 0.98,
+                    transparent: true
+                });
+                const vertebra = new THREE.Mesh(vertebraGeom, vertebraMat);
+                vertebra.position.copy(pos);
+                vertebra.quaternion.copy(quaternion);
+                vertebra.position.y -= 0.2; // Slightly below center
+                scene.add(vertebra);
+            }
+        }
+
+        // Remove bone/rib/spine/cocoon functions
+        // Add a function to generate a 3D web tunnel made of threads
+        function addWebTunnel(curve, tunnelRadius, threadCount, threadSegments) {
+            for (let i = 0; i < threadCount; i++) {
+                const startT = Math.random() * 0.95;
+                let endT = startT + 0.05 + Math.random() * 0.2;
+                if (endT > 1) endT = 1;
+                const points = [];
+                const spiralTurns = 2 + Math.floor(Math.random() * 3);
+                for (let j = 0; j <= threadSegments; j++) {
+                    let t = startT + (endT - startT) * (j / threadSegments);
+                    t = Math.max(0, Math.min(1, t));
+                    const base = curve.getPointAt(t);
+                    const tangent = curve.getTangentAt(t).normalize();
+                    let normal = new THREE.Vector3(0, 1, 0);
+                    if (Math.abs(tangent.y) > 0.9) normal = new THREE.Vector3(1, 0, 0);
+                    const binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
+                    normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+                    const angle = spiralTurns * Math.PI * 2 * (j / threadSegments) + Math.random() * Math.PI * 0.2;
+                    const r = tunnelRadius * (0.97 + Math.sin(angle * 2 + t * 10) * 0.04 + Math.random() * 0.04);
+                    const offset = normal.clone().multiplyScalar(Math.cos(angle) * r)
+                        .add(binormal.clone().multiplyScalar(Math.sin(angle) * r));
+                    points.push(base.clone().add(offset));
+                }
+                const threadCurve = new THREE.CatmullRomCurve3(points);
+                const threadGeom = new THREE.TubeGeometry(threadCurve, threadSegments * 2, 0.16 + Math.random() * 0.08, 10, false); // Thicker threads
+                const threadMat = new THREE.MeshPhysicalMaterial({
+                    color: 0x8a7c6b, // Rope-like brownish color
+                    roughness: 0.85, // High roughness for matte finish
+                    metalness: 0.08,
+                    transmission: 0.0, // No silkiness
+                    thickness: 0.18,
+                    ior: 1.2,
+                    clearcoat: 0.0, // No clearcoat for matte
+                    clearcoatRoughness: 1.0,
+                    opacity: 0.98,
+                    transparent: true,
+                    emissive: 0x000000, // No glow
+                    emissiveIntensity: 0.0
+                });
+                const thread = new THREE.Mesh(threadGeom, threadMat);
+                scene.add(thread);
+            }
+        }
+
+        // Restore tube geometry for the main tunnel
+        let tubeGeometry;
+        const tubeRadius = 6.5; // Wider tunnel
+        const tubularSegments = 200;
+        function createTunnel() {
+            tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
+            const tubeMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x181a1e, // Very dark blue/gray for shadow
+                roughness: 0.95,
+                metalness: 0.05,
+                transmission: 0.1,
+                thickness: 0.3,
+                ior: 1.1,
+                clearcoat: 0.2,
+                clearcoatRoughness: 0.8,
+                opacity: 0.55,
+                transparent: true,
+                side: THREE.BackSide
+            });
+            tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            scene.add(tubeMesh);
+        }
+
         // Initialize the Three.js scene
         function initThree() {
             // Scene setup
@@ -246,40 +397,18 @@
 
             curve = new THREE.CatmullRomCurve3(points);
 
-            // Create TubeGeometry
-            // parameters: path, tubularSegments, radius, radialSegments, closed
-            const tubeRadius = 2.5;
-            const tubularSegments = 200; // More segments for smoother tube
-            const radialSegments = 20;   // More segments for rounder tube
-            const tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, radialSegments, false);
-
-            // Create the custom line texture
-            const lineTexture = createLineTexture();
-            lineTexture.repeat.set(50, 1); // Increase repeat for thinner rings
-
-            // Create a material for the tube that glows
-            const tubeMaterial = new THREE.MeshLambertMaterial({
-                map: lineTexture,
-                emissive: new THREE.Color(0x000000), // Black emissive color for contrast
-                emissiveMap: lineTexture,
-                emissiveIntensity: 1.2, // Slightly reduced intensity for subtle glow
-                transparent: true,
-                opacity: 0.8, // More transparent for thinner appearance
-                side: THREE.BackSide,
-                blending: THREE.NormalBlending,
-            });
-            lineTexture.repeat.set(200, 1); // Increase repeat for even thinner rings
-
-            tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
-            scene.add(tubeMesh);
-
-            // Add ambient light for overall scene illumination (less intense now with glowing tube)
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+            // Dramatic, eerie lighting
+            const ambientLight = new THREE.AmbientLight(0xf7e7c6, 0.22);
             scene.add(ambientLight);
-
-            // Add a point light that will move with the camera (can be less intense too)
-            pointLight = new THREE.PointLight(0xffffff, 0.5, 50); // color, intensity, distance
+            pointLight = new THREE.PointLight(0xffffff, 2.2, 90);
             scene.add(pointLight);
+            const dirLight = new THREE.DirectionalLight(0xcad6ff, 1.1);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Add web tunnel threads AFTER curve is initialized
+            addWebTunnel(curve, tubeRadius, 160, 36); // More threads, more segments
+            createTunnel(); // Add the shadowy tunnel wall
 
             // Get HTML elements
             scrollContainer = document.getElementById('scroll-container');
@@ -398,17 +527,25 @@
             requestAnimationFrame(animateScroll);
         }
 
-        // Infinite tunnel loop
+        // Animate camera along the tunnel based on scroll position only
+        function animate() {
+            requestAnimationFrame(animate);
+            // Only update scene based on scroll position, not auto-progress
+            updateSceneAndContent();
+            renderer.render(scene, camera);
+        }
+
+        // Get scroll progress (0 to 1) based on scrollContainer
+        function getScrollProgress() {
+            const scrollTop = scrollContainer.scrollTop;
+            const maxScroll = scrollContentWrapper.scrollHeight - window.innerHeight;
+            return maxScroll > 0 ? scrollTop / maxScroll : 0;
+        }
+
+        // Update camera and scene based on scroll progress
         function updateSceneAndContent() {
-            // Calculate scroll progress based on the total scrollable height
-            const maxScrollTop = scrollContentWrapper.scrollHeight - scrollContainer.clientHeight;
-            const scrollProgress = maxScrollTop > 0 ? scrollContainer.scrollTop / maxScrollTop : 0;
-            const clampedProgress = Math.max(0, Math.min(1, scrollProgress));
-
-            console.log('Scroll Progress:', scrollProgress);
-            console.log('Clamped Progress:', clampedProgress);
-
-            // Update camera position along the curve
+            const progress = getScrollProgress();
+            const clampedProgress = Math.max(0, Math.min(1, progress));
             const cameraPoint = curve.getPointAt(clampedProgress);
             const cameraTangent = curve.getTangentAt(clampedProgress).normalize();
             camera.position.copy(cameraPoint);
@@ -416,56 +553,20 @@
             camera.lookAt(lookAtPoint);
             pointLight.position.copy(cameraPoint);
 
-            console.log('Camera Position:', camera.position);
-
             // Animate section visibility and scale based on scroll progress
             const sectionScrollProgress = clampedProgress * (contentSections.length - 1);
-
             contentSections.forEach((section, index) => {
                 const distance = Math.abs(index - sectionScrollProgress);
-                // Opacity is 1 when close, 0 when far
                 const opacity = Math.max(0, 1 - distance);
-                // Scale is 1 when close, 0.5 when far
                 const scale = 0.5 + 0.5 * Math.max(0, 1 - distance);
-
                 section.style.opacity = opacity;
                 section.style.transform = `scale(${scale})`;
             });
-
-            // Change tunnel line color dynamically based on section
-            const sectionIndex = Math.min(Math.floor(clampedProgress * contentSections.length), contentSections.length - 1);
-
-            // End of tunnel effect for the last section
-            if (sectionIndex >= contentSections.length - 1) {
-                const endProgress = (clampedProgress - (contentSections.length - 1) / contentSections.length) * contentSections.length;
-                scene.fog.far = 75 - endProgress * 50; // Gradually decrease fog distance
-            } else {
-                scene.fog.far = 75; // Default fog distance
-            }
-
-            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0x444444]; // Last color is dark gray to be visible in black fog
-            const currentColor = colors[sectionIndex % colors.length];
-            tubeMesh.material.emissive.setHex(currentColor);
-
-            console.log('Current Section Index:', sectionIndex);
-            console.log('Current Tunnel Color:', currentColor);
-
-            // Render the Three.js scene
-            renderer.render(scene, camera);
-        }
-
-        // Start the animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-            // The rendering is now handled by updateSceneAndContent on scroll,
-            // but we keep animate for potential future animations not tied to scroll
-            // For now, it primarily keeps the loop running if needed.
-            // renderer.render(scene, camera); // No need to call here if updateSceneAndContent handles it
         }
 
         // Initialize Three.js and start the animation when the window loads
         window.onload = function() {
-            setViewportHeight(); // Set initial height
+            setViewportHeight();
             initThree();
             animate();
         };
