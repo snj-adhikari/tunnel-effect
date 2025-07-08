@@ -130,7 +130,7 @@
                 </form>
             </section>
 
-            <section id="section5" class="section-content" data-scroll-start="0.8" data-scroll-end="1.0">
+            <section id="section5" class="section-content" data-scroll-start="0.56" data-scroll-end="0.70">
                 <h2 class="text-4xl md:text-6xl font-bold mb-4">Contact Us</h2>
                 <p class="text-lg md:text-xl max-w-2xl">
                     Have questions or feedback? We'd love to hear from you.
@@ -144,6 +144,20 @@
                     </a>
                 </div>
             </section>
+
+            <section id="section6" class="section-content" data-scroll-start="0.70" data-scroll-end="0.84">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">Our Community</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    Join a vibrant community of creators and innovators.
+                </p>
+            </section>
+
+            <section id="section7" class="section-content" data-scroll-start="0.84" data-scroll-end="1.0">
+                <h2 class="text-4xl md:text-6xl font-bold mb-4">The End of the Line</h2>
+                <p class="text-lg md:text-xl max-w-2xl">
+                    You\'ve reached the destination, but the journey never truly ends.
+                </p>
+            </section>
         </div>
     </div>
 
@@ -156,6 +170,9 @@
         let currentSectionIndex = 0;
         let isAnimating = false; // To prevent scroll spam
         let touchStartY = 0; // For mobile touch events
+        let particles, particleVelocities; // For moving particles
+        let endOfTunnelLight; // Light at the end of the tunnel
+        let debrisMeshes = []; // To store and animate debris
 
         // Function to set the viewport height dynamically for mobile
         function setViewportHeight() {
@@ -194,25 +211,142 @@
 
         // Add particles to the background
         function addParticles() {
-            const particleCount = 500;
+            const particleCount = 1200; // Increased particle count for denser feel
             const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            particleVelocities = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 150;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 150;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 150;
+                particleVelocities.push(new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.03,
+                    (Math.random() - 0.5) * 0.03,
+                    (Math.random() - 0.5) * 0.03
+                ));
+            }
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
             const particleMaterial = new THREE.PointsMaterial({
-                color: 0xffffff,
-                size: 0.1,
+                color: 0x8B4513, // Dirt/saddle brown color
+                size: 0.2, // Slightly larger particles
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
             });
 
-            const positions = new Float32Array(particleCount * 3);
-            for (let i = 0; i < particleCount; i++) {
-                positions[i * 3] = (Math.random() - 0.5) * 100;
-                positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+
+        // Function to create a realistic leaf mesh with a crease
+        function createLeafMesh() {
+            const leafShape = new THREE.Shape();
+            // Define the leaf outline with a crease
+            leafShape.moveTo(0, 0);
+            leafShape.quadraticCurveTo(0.1, 0.1, 0.2, 0.4);
+            leafShape.quadraticCurveTo(0.05, 0.6, 0, 0.8); // Tip
+            leafShape.quadraticCurveTo(-0.05, 0.6, -0.2, 0.4);
+            leafShape.quadraticCurveTo(-0.1, 0.1, 0, 0); // Back to base
+
+            const extrudeSettings = {
+                steps: 1,
+                depth: 0.02,
+                bevelEnabled: true,
+                bevelThickness: 0.01,
+                bevelSize: 0.01,
+                bevelSegments: 1
+            };
+
+            const leafGeom = new THREE.ExtrudeGeometry(leafShape, extrudeSettings);
+            const leafMat = new THREE.MeshPhysicalMaterial({
+                color: 0x556B2F, // Darker, more realistic green
+                roughness: 0.8,
+                side: THREE.DoubleSide,
+                transmission: 0.4,
+                opacity: 0.9,
+                transparent: true
+            });
+            const leaf = new THREE.Mesh(leafGeom, leafMat);
+            leaf.castShadow = true;
+            return leaf;
+        }
+
+        // Function to create a realistic, multi-part branch mesh with leaves
+        function createBranchMesh() {
+            const branchGroup = new THREE.Group();
+            const branchMat = new THREE.MeshPhysicalMaterial({
+                color: 0x5C4033, // Dark wood color
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            // Main branch
+            const mainGeom = new THREE.CylinderGeometry(0.08, 0.12, 4, 8);
+            const mainBranch = new THREE.Mesh(mainGeom, branchMat);
+            mainBranch.castShadow = true;
+            branchGroup.add(mainBranch);
+
+            // Add smaller sub-branches and leaves
+            const subBranchCount = 2 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < subBranchCount; i++) {
+                const subGeom = new THREE.CylinderGeometry(0.04, 0.06, 2, 6);
+                const subBranch = new THREE.Mesh(subGeom, branchMat);
+                subBranch.position.y = (Math.random() - 0.5) * 1.5;
+                subBranch.position.x = (Math.random() - 0.5) * 0.2;
+                subBranch.rotation.z = (Math.random() - 0.5) * Math.PI / 2;
+                subBranch.rotation.x = (Math.random() - 0.5) * Math.PI / 2;
+                subBranch.castShadow = true;
+                mainBranch.add(subBranch);
+
+                // Add a leaf to the sub-branch
+                if (Math.random() > 0.3) {
+                    const leaf = createLeafMesh();
+                    const leafScale = 0.5 + Math.random() * 0.5;
+                    leaf.scale.set(leafScale, leafScale, leafScale);
+                    leaf.position.y = 1; // Tip of the sub-branch
+                    leaf.rotation.x = Math.PI / 2;
+                    subBranch.add(leaf);
+                }
             }
 
-            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const particles = new THREE.Points(particleGeometry, particleMaterial);
-            scene.add(particles);
+            return branchGroup;
+        }
+
+        // Function to add random 3D debris like leaves and branches
+        function addRandomDebris(curve, count) {
+            for (let i = 0; i < count; i++) {
+                const t = Math.random();
+                const pos = curve.getPointAt(t);
+                const tangent = curve.getTangentAt(t);
+
+                let object;
+                let scale = 0.8 + Math.random() * 0.4; // Randomize scale
+
+                // Randomly decide to create a leaf or a branch
+                if (Math.random() > 0.6) {
+                    // Create a realistic leaf
+                    object = createLeafMesh();
+                } else {
+                    // Create a realistic branch
+                    object = createBranchMesh();
+                    scale *= 0.8; // Branches are a bit smaller overall
+                }
+
+                object.scale.set(scale, scale, scale);
+                object.position.copy(pos);
+                object.position.add(new THREE.Vector3(
+                    (Math.random() - 0.5) * 18,
+                    (Math.random() - 0.5) * 18,
+                    (Math.random() - 0.5) * 18
+                ));
+                object.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+                object.rotation.x += Math.random() * Math.PI;
+                object.rotation.z += Math.random() * Math.PI;
+                scene.add(object);
+                debrisMeshes.push(object); // Store debris for animation
+            }
         }
 
         // Function to create a procedural bone-like normal map
@@ -358,7 +492,7 @@
                 const threadCurve = new THREE.CatmullRomCurve3(points);
                 const threadGeom = new THREE.TubeGeometry(threadCurve, threadSegments * 2, 0.16 + Math.random() * 0.08, 10, false); // Thicker threads
                 const threadMat = new THREE.MeshPhysicalMaterial({
-                    color: 0x4B4B4B, // Darker grey/black color
+                    color: 0x5C4033, // Changed to dark wood color to look like tree branches
                     roughness: 0.9, // Increased roughness for a more matte and rough finish
                     metalness: 0.05, // Reduced metalness
                     transmission: 0.0, // No silkiness
@@ -382,9 +516,9 @@
 
         // Restore tube geometry for the main tunnel
         let tubeGeometry;
-        const tubeRadius = 6.5; // Wider tunnel
         const tubularSegments = 200;
         function createTunnel() {
+            const tubeRadius = 4.5; // Reduced radius for a tighter tunnel
             tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
             const tubeMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x0A0A0A, // Even darker tunnel wall
@@ -402,6 +536,35 @@
             tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
             tubeMesh.receiveShadow = true; // The tunnel wall receives shadows from the ropes
             scene.add(tubeMesh);
+        }
+
+        // Extend the tunnel to the very end
+        function extendTunnelToEnd() {
+            const endPoint = curve.getPointAt(1); // Get the last point of the curve
+            const tangent = curve.getTangentAt(1).normalize();
+            const tunnelEndGeom = new THREE.CylinderGeometry(4.5, 4.5, 2, 32);
+            const tunnelEndMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0A0A0A, // Match the tunnel wall color
+                roughness: 0.95,
+                metalness: 0.05,
+                opacity: 0.65,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const tunnelEnd = new THREE.Mesh(tunnelEndGeom, tunnelEndMat);
+            tunnelEnd.position.copy(endPoint);
+            tunnelEnd.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+            scene.add(tunnelEnd);
+        }
+
+        // Ensure particles are visible throughout the tunnel
+        function ensureParticlesVisibility() {
+            particles.geometry.attributes.position.array.forEach((_, i) => {
+                if (particles.geometry.attributes.position.array[i] > 75 || particles.geometry.attributes.position.array[i] < -75) {
+                    particles.geometry.attributes.position.array[i] = (Math.random() - 0.5) * 150;
+                }
+            });
+            particles.geometry.attributes.position.needsUpdate = true;
         }
 
         // Initialize the Three.js scene
@@ -450,9 +613,15 @@
             dirLight.position.set(10, 20, 10);
             scene.add(dirLight);
 
+            // Add a light at the very end of the tunnel
+            endOfTunnelLight = new THREE.PointLight(0xffffff, 5, 50);
+            endOfTunnelLight.position.copy(curve.getPointAt(1));
+            scene.add(endOfTunnelLight);
+
             // Add web tunnel threads AFTER curve is initialized
-            addWebTunnel(curve, tubeRadius, 160, 36); // More threads, more segments
+            addWebTunnel(curve, 4.5, 160, 36); // More threads, more segments
             createTunnel(); // Add the shadowy tunnel wall
+            addRandomDebris(curve, 50); // Increased number of debris objects for a forest feel
 
             // Get HTML elements
             scrollContainer = document.getElementById('scroll-container');
@@ -574,6 +743,34 @@
         // Animate camera along the tunnel based on scroll position only
         function animate() {
             requestAnimationFrame(animate);
+
+            // Animate debris (leaves and branches)
+            debrisMeshes.forEach(mesh => {
+                mesh.rotation.x += 0.001 + Math.random() * 0.001;
+                mesh.rotation.y += 0.001 + Math.random() * 0.001;
+                // Gentle floating motion
+                mesh.position.y += Math.sin(Date.now() * 0.0005 + mesh.id) * 0.005;
+            });
+
+            // Update particles for twinkling and movement
+            if (particles) {
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += particleVelocities[i / 3].x;
+                    positions[i + 1] += particleVelocities[i / 3].y;
+                    positions[i + 2] += particleVelocities[i / 3].z;
+
+                    // If particle goes off-screen, reset its position
+                    if (positions[i] > 75 || positions[i] < -75) positions[i] = (Math.random() - 0.5) * 150;
+                    if (positions[i + 1] > 75 || positions[i + 1] < -75) positions[i + 1] = (Math.random() - 0.5) * 150;
+                    if (positions[i + 2] > 75 || positions[i + 2] < -75) positions[i + 2] = (Math.random() - 0.5) * 150;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+
+                // Twinkle effect
+                particles.material.opacity = 0.5 + 0.25 * Math.sin(Date.now() * 0.002);
+            }
+
             // Only update scene based on scroll position, not auto-progress
             updateSceneAndContent();
             renderer.render(scene, camera);
@@ -589,7 +786,8 @@
         // Update camera and scene based on scroll progress
         function updateSceneAndContent() {
             const progress = getScrollProgress();
-            const clampedProgress = Math.max(0, Math.min(1, progress));
+            // Stop the camera just before the end of the tunnel to keep the exit in view
+            const clampedProgress = Math.max(0, Math.min(0.95, progress));
             const cameraPoint = curve.getPointAt(clampedProgress);
             const cameraTangent = curve.getTangentAt(clampedProgress).normalize();
             camera.position.copy(cameraPoint);
@@ -597,21 +795,72 @@
             camera.lookAt(lookAtPoint);
             pointLight.position.copy(cameraPoint);
 
+            // Fade in the end-of-tunnel light as the user approaches the last section
+            const endLightIntensity = Math.max(0, (clampedProgress - 0.8) / 0.2) * 10; // Brighter light at the end
+            endOfTunnelLight.intensity = endLightIntensity;
+
             // Animate section visibility and scale based on scroll progress
-            const sectionScrollProgress = clampedProgress * (contentSections.length - 1);
+            const sectionScrollProgress = progress * (contentSections.length - 1);
             contentSections.forEach((section, index) => {
                 const distance = Math.abs(index - sectionScrollProgress);
                 const opacity = Math.max(0, 1 - distance);
                 const scale = 0.5 + 0.5 * Math.max(0, 1 - distance);
+
+                // Revert the last section to behave like the others
+                section.style.position = 'relative'; // Revert position
                 section.style.opacity = opacity;
                 section.style.transform = `scale(${scale})`;
+                section.style.color = 'white';
             });
+        }
+
+        // Adjust the tube radius and curve points for a more compact tunnel
+        const tubeRadius = 4.5; // Reduced radius for a tighter tunnel
+        function createTunnel() {
+            tubeGeometry = new THREE.TubeGeometry(curve, tubularSegments, tubeRadius, 32, false); // More segments for smoothness
+            const tubeMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x0A0A0A, // Even darker tunnel wall
+                roughness: 0.95,
+                metalness: 0.05,
+                transmission: 0.1,
+                thickness: 0.3,
+                ior: 1.1,
+                clearcoat: 0.2,
+                clearcoatRoughness: 0.8,
+                opacity: 0.65, // Slightly more opaque for deeper shadows
+                transparent: true,
+                side: THREE.BackSide
+            });
+            tubeMesh = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            tubeMesh.receiveShadow = true; // The tunnel wall receives shadows from the ropes
+            scene.add(tubeMesh);
+        }
+
+        // Ensure the end of the tunnel has a proper circular cap
+        function addTunnelEndCap() {
+            const endPoint = curve.getPointAt(1); // Get the last point of the curve
+            const tangent = curve.getTangentAt(1).normalize();
+            const endCapGeom = new THREE.CircleGeometry(tubeRadius, 32); // Circular geometry for the end cap, matching tubeRadius
+            const endCapMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0A0A0A, // Match the tunnel wall color
+                roughness: 0.95,
+                metalness: 0.05,
+                opacity: 0.65,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const endCap = new THREE.Mesh(endCapGeom, endCapMat);
+            endCap.position.copy(endPoint);
+            endCap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
+            scene.add(endCap);
         }
 
         // Initialize Three.js and start the animation when the window loads
         window.onload = function() {
             setViewportHeight();
             initThree();
+            addTunnelEndCap(); // Ensure the end cap is added
+            // positionLastSectionInsideTunnel(); // This is now handled in the update loop
             animate();
         };
     </script>
