@@ -19,7 +19,7 @@
             text-align: center;
             max-width: 80%; /* Limit the width to 80% of the screen */
             width: 100%; /* Ensure it takes full width up to the max-width */
-            height: 100vh; /* Full viewport height */
+            height: calc(var(--vh, 1vh) * 100); /* Use dynamic viewport height for mobile */
             background: transparent;
             margin: 0 auto; /* Center horizontally */
             padding: 1rem; /* Add some padding for better responsiveness */
@@ -156,6 +156,12 @@
         let currentSectionIndex = 0;
         let isAnimating = false; // To prevent scroll spam
         let touchStartY = 0; // For mobile touch events
+
+        // Function to set the viewport height dynamically for mobile
+        function setViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
 
         // Function to create a glowing line texture
         function createLineTexture() {
@@ -300,6 +306,7 @@
 
         // Handle window resize
         function onWindowResize() {
+            setViewportHeight(); // Adjust height on resize
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -426,7 +433,7 @@
             });
 
             // Change tunnel line color dynamically based on section
-            const sectionIndex = Math.floor(clampedProgress * contentSections.length);
+            const sectionIndex = Math.min(Math.floor(clampedProgress * contentSections.length), contentSections.length - 1);
 
             // End of tunnel effect for the last section
             if (sectionIndex >= contentSections.length - 1) {
@@ -458,6 +465,7 @@
 
         // Initialize Three.js and start the animation when the window loads
         window.onload = function() {
+            setViewportHeight(); // Set initial height
             initThree();
             animate();
         };
